@@ -1,5 +1,7 @@
 package com.michalkaluzinski.kafka.twitter.producer;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
@@ -29,12 +31,15 @@ import com.twitter.hbc.httpclient.auth.OAuth1;
 public class TwitterProducer {
 
     Logger logger = LoggerFactory.getLogger(TwitterProducer.class);
+    Properties twitterProperties;
 
     public static void main(String[] args) {
+
 	new TwitterProducer().run();
     }
 
     public void run() {
+	readAndLoadTwitterProperties();
 	/**
 	 * Set up your blocking queues: Be sure to size these properly based on expected
 	 * TPS of your stream
@@ -82,6 +87,15 @@ public class TwitterProducer {
 	logger.info("End of application");
     }
 
+    private void readAndLoadTwitterProperties() {
+	try (InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream("twitter.properties")) {
+	    twitterProperties = new Properties();
+	    twitterProperties.load(inputStream);
+	} catch (IOException e1) {
+	    throw new RuntimeException();
+	}
+    }
+
     public KafkaProducer<String, String> createKafkaProducer() {
 	String bootstrapServers = "127.0.0.1:9092";
 
@@ -107,7 +121,8 @@ public class TwitterProducer {
 	hosebirdEndpoint.trackTerms(terms);
 
 	// These secrets should be read from a config file
-	Authentication hosebirdAuth = new OAuth1("consumerKey", "consumerSecret", "token", "secret");
+	Authentication hosebirdAuth = new OAuth1(twitterProperties.getProperty("consumer.key"), twitterProperties.getProperty("consumer.key"),
+		"token", "secret");
 
 	ClientBuilder builder = new ClientBuilder().name("Hosebird-Client-01") // optional: mainly for the logs
 		.hosts(hosebirdHosts).authentication(hosebirdAuth).endpoint(hosebirdEndpoint)
